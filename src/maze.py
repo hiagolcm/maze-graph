@@ -89,6 +89,7 @@ def navigate(start: Node | None, visit):
 class Maze:
     def __init__(self, w, h):
         first = None
+        last = None
         previous_line = None
 
         for i in range(h):
@@ -98,7 +99,8 @@ class Maze:
                 left_node = None if j == 0 else ith_line[j-1]
                 up_node = None if i == 0 else previous_line[j]
 
-                new_node = Node(left_node, up_node, None, None, i, j)
+                new_node = Node(left_node, up_node, None, None, j, i)
+                last = new_node
 
                 if i == 0 and j == 0:
                     first = new_node
@@ -112,3 +114,8 @@ class Maze:
             previous_line = ith_line
 
         self.first = first
+        self.last = last
+
+    def open_entrance_and_exit(self):
+        self.first.up_node.is_path_free = True
+        self.last.down_node.is_path_free = True

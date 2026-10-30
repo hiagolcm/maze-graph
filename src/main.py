@@ -39,6 +39,7 @@ def draw_square(node: Node, screen):
 
 maze = Maze(MAZE_WIDTH, MAZE_HEIGHT)
 break_walls_dfs(maze.first)
+maze.open_entrance_and_exit()
 
 # pygame setup
 pygame.init()
