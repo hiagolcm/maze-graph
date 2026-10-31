@@ -43,7 +43,6 @@ class Node:
 
         return neighbors
 
-
     def get_reachable_neighbors(self):
         links = [
             self.left_node,
@@ -61,28 +60,6 @@ class Node:
         random.shuffle(reachable)
 
         return reachable
-
-
-def navigate(start: Node, visit):
-    ref_visited_num = start.visited + 1
-
-    stack = [start]
-
-    while stack:
-        node = stack.pop()
-        node.visited = ref_visited_num
-        visit(node)
-
-        neighbors = [
-            node.left_node.node,
-            node.right_node.node,
-            node.up_node.node,
-            node.down_node.node,
-        ]
-
-        for neighbor in neighbors:
-            if neighbor is not None and neighbor.visited != ref_visited_num:
-                stack.append(neighbor)
 
 
 class Maze:
@@ -118,3 +95,26 @@ class Maze:
     def open_entrance_and_exit(self):
         self.first.up_node.is_path_free = True
         self.last.down_node.is_path_free = True
+
+    def apply_for_each_node(self, visit):
+        start = self.first
+
+        ref_visited_num = start.visited + 1
+
+        stack = [start]
+
+        while stack:
+            node = stack.pop()
+            node.visited = ref_visited_num
+            visit(node)
+
+            neighbors = [
+                node.left_node.node,
+                node.right_node.node,
+                node.up_node.node,
+                node.down_node.node,
+            ]
+
+            for neighbor in neighbors:
+                if neighbor is not None and neighbor.visited != ref_visited_num:
+                    stack.append(neighbor)

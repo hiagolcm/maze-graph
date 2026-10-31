@@ -2,7 +2,7 @@ import pygame
 
 import maze_builders.dfs_builder as dfs_builder
 import maze_solvers.dfs_solver as dfs_solver
-from maze import Maze, Node, navigate
+from maze import Maze, Node
 
 MAZE_WIDTH = 100
 MAZE_HEIGHT = 100
@@ -74,7 +74,7 @@ dt = 0
 
 # printing
 screen.fill("white")
-navigate(maze.first, lambda node: draw_square(node, screen))
+maze.apply_for_each_node(lambda node: draw_square(node, screen))
 
 buffer = []
 dfs_solver.solve(maze.first, maze.last, lambda node: add_to_drawing_buffer(node, buffer))
