@@ -31,6 +31,21 @@ class Node:
                 back.is_path_free = True
                 return
 
+    def get_reachable_neighbors(self):
+        links = [
+            self.left_node,
+            self.right_node,
+            self.up_node,
+            self.down_node,
+        ]
+
+        reachable = []
+
+        for l in links:
+            if l.node != None and l.is_path_free:
+                reachable.append(l.node)
+
+        return reachable
 
 def break_walls_dfs(start: Node):
     ref_visited_num = start.visited + 1
@@ -84,8 +99,8 @@ def navigate(start: Node, visit):
                 stack.append(neighbor)
 
 
-def solve_dfs(start: Node, end: Node):
-    ref_visited_num = start.node.visited + 1
+def solve_dfs(start: Node, end: Node, visit):
+    ref_visited_num = start.visited + 1
 
     start.visited = ref_visited_num
 
@@ -94,20 +109,16 @@ def solve_dfs(start: Node, end: Node):
     while len(stack) > 0:
         current = stack.pop()
         current.visited = ref_visited_num
+        visit(current)
 
         if current == end:
             return True
 
-        neighbors = [
-            current.left_node.node,
-            current.right_node.node,
-            current.up_node.node,
-            current.down_node.node
-        ]
+        neighbors = current.get_reachable_neighbors()
         random.shuffle(neighbors)
 
         for n in neighbors:
-            if n.visited != ref_visited_num:
+            if n != None and n.visited != ref_visited_num:
                 stack.append(n)
 
     return False
