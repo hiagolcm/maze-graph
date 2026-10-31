@@ -63,7 +63,7 @@ class Node:
 
 
 class Maze:
-    def __init__(self, w, h):
+    def __init__(self, w, h, builder, solver):
         first = None
         last = None
         previous_line = None
@@ -91,6 +91,9 @@ class Maze:
 
         self.first = first
         self.last = last
+        self.solver = solver
+
+        builder(first)
 
     def open_entrance_and_exit(self):
         self.first.up_node.is_path_free = True
@@ -118,3 +121,6 @@ class Maze:
             for neighbor in neighbors:
                 if neighbor is not None and neighbor.visited != ref_visited_num:
                     stack.append(neighbor)
+
+    def solve(self, visit):
+        self.solver(self.first, self.last, visit)
