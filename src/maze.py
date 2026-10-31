@@ -9,18 +9,17 @@ class Neighbor:
 
 class Node:
     def __init__(self, left_node, up_node, right_node, down_node, x, y):
-        self.color = "white"
+        self.visited = 0
         self.left_node = Neighbor(left_node, False)
         self.up_node = Neighbor(up_node, False)
         self.right_node = Neighbor(right_node, False)
         self.down_node = Neighbor(down_node, False)
         self.x = x
         self.y = y
-        self.visited = False
 
-    def is_dead_end(self):
+    def is_dead_end(self, ref_visited_num):
         for link in (self.left_node, self.up_node, self.right_node, self.down_node):
-            if link.node is not None and not link.node.visited:
+            if link.node is not None and link.node.visited != ref_visited_num:
                 return False
         return True
 
@@ -33,17 +32,16 @@ class Node:
                 return
 
 
-def break_walls_dfs(start: Node | None):
-    if start is None:
-        return
+def break_walls_dfs(start: Node):
+    ref_visited_num = start.visited + 1
 
     stack = [start]
-    start.visited = True
+    start.visited = ref_visited_num
 
     while stack:
         node = stack[-1]
 
-        if node.is_dead_end():
+        if node.is_dead_end(ref_visited_num):
             stack.pop()
             continue
 
@@ -57,21 +55,21 @@ def break_walls_dfs(start: Node | None):
 
         for link in links:
             neighbor = link.node
-            if neighbor is not None and not neighbor.visited:
+            if neighbor is not None and neighbor.visited != ref_visited_num:
                 node.open_passage(link)
-                neighbor.visited = True
+                neighbor.visited = ref_visited_num
                 stack.append(neighbor)
                 break
 
-def navigate(start: Node | None, visit):
-    if start is None:
-        return
+
+def navigate(start: Node, visit):
+    ref_visited_num = start.visited + 1
 
     stack = [start]
-    start.color = "gray"
 
     while stack:
         node = stack.pop()
+        node.visited = ref_visited_num
         visit(node)
 
         neighbors = [
@@ -82,9 +80,39 @@ def navigate(start: Node | None, visit):
         ]
 
         for neighbor in neighbors:
-            if neighbor is not None and neighbor.color != "gray":
-                neighbor.color = "gray"
+            if neighbor is not None and neighbor.visited != ref_visited_num:
                 stack.append(neighbor)
+
+
+def solve_dfs(start: Node, end: Node):
+    ref_visited_num = start.node.visited + 1
+
+    start.visited = ref_visited_num
+
+    stack = [start]
+
+    while len(stack) > 0:
+        current = stack.pop()
+        current.visited = ref_visited_num
+
+        if current == end:
+            return True
+
+        neighbors = [
+            current.left_node.node,
+            current.right_node.node,
+            current.up_node.node,
+            current.down_node.node
+        ]
+        random.shuffle(neighbors)
+
+        for n in neighbors:
+            if n.visited != ref_visited_num:
+                stack.append(n)
+
+    return False
+
+
 
 class Maze:
     def __init__(self, w, h):
@@ -96,7 +124,7 @@ class Maze:
             ith_line = []
 
             for j in range(w):
-                left_node = None if j == 0 else ith_line[j-1]
+                left_node = None if j == 0 else ith_line[j - 1]
                 up_node = None if i == 0 else previous_line[j]
 
                 new_node = Node(left_node, up_node, None, None, j, i)
