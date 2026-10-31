@@ -1,8 +1,8 @@
 import pygame
 import random
 
-import maze_builders.dfs_builder as dfs_builder
-import maze_solvers.dfs_solver as dfs_solver
+import maze_builders.dead_end_dfs as dead_end_dfs
+import maze_solvers.dfs as dfs
 from draw_utils import (
     draw_square,
     draw_square_filled,
@@ -14,7 +14,7 @@ from constants import MAZE_HEIGHT, MAZE_WIDTH, MULTIPLIER
 random.seed(0)
 
 # Maze build
-maze = Maze(MAZE_WIDTH, MAZE_HEIGHT, builder=dfs_builder.build, solver=dfs_solver.solve)
+maze = Maze(MAZE_WIDTH, MAZE_HEIGHT, builder=dead_end_dfs.build, solver=dfs.solve) # <- MODIFIQUE AQUI PARA TESTAR SEU ALGORITMO
 maze.open_entrance_and_exit()
 
 # Maze solve

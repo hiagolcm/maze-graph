@@ -1,3 +1,10 @@
+# Descricao do algoritmo
+# - Escolhe uma célula inicial.
+# - Visita vizinhos ainda não visitados.
+# - Remove paredes entre as células.
+# - Quando chega a um beco sem saída, retorna (backtracking).
+# - Continua até visitar todas as células.
+
 import random
 
 def build(start: Node):
