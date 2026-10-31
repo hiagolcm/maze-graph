@@ -2,10 +2,10 @@ import pygame
 
 from maze import Maze, Node, navigate, break_walls_dfs, solve_dfs
 
-MAZE_WIDTH = 40
-MAZE_HEIGHT = 40
-MULTIPLIER = 20
-THICKNESS = 4
+MAZE_WIDTH = 100
+MAZE_HEIGHT = 100
+MULTIPLIER = 10
+THICKNESS = 1
 
 
 def draw_square(node: Node, screen):
@@ -37,16 +37,21 @@ def draw_square(node: Node, screen):
         )
 
 
-def draw_square_filled(node: Node, screen):
+def draw_square_filled(node: Node, screen, gap=0, color="red"):
     x = node.x * MULTIPLIER
     y = node.y * MULTIPLIER
-    border = THICKNESS
 
-    pygame.draw.rect(
-        screen,
-        "red",
-        (x + border, y + border, MULTIPLIER - border * 2, MULTIPLIER - border * 2),
+    size = MULTIPLIER - THICKNESS - 2 * gap
+
+    square = pygame.Rect(0, 0, size, size)
+
+    square.center = (
+        x + MULTIPLIER // 2,
+        y + MULTIPLIER // 2,
     )
+
+    pygame.draw.rect(screen, color, square)
+
 
 def add_to_drawing_buffer(node: Node, buffer):
     buffer.append(node)
@@ -74,8 +79,6 @@ solve_dfs(maze.first, maze.last, lambda node: add_to_drawing_buffer(node, buffer
 
 
 while running:
-    # poll for events
-    # pygame.QUIT event means the user clicked X to close your window
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -84,12 +87,8 @@ while running:
         current_node = buffer.pop(0)
         draw_square_filled(current_node, screen)
 
-    # flip() the display to put your work on screen
     pygame.display.flip()
 
-    # limits FPS to 60
-    # dt is delta time in seconds since last frame, used for framerate-
-    # independent physics.
-    dt = clock.tick(10) / 1000
+    dt = clock.tick(200) / 1000
 
 pygame.quit()
