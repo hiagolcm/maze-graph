@@ -41,7 +41,11 @@ from maze import Node
 #   antigos espalhados pelos nos.
 #
 # Como testar:
-# - No main.py, passe a sua funcao build no parametro "builder" do Maze.
+# - Rode a partir de src/:
+#       python3 main.py --builder randomized_kruskal
+# - O nome passado e o nome deste arquivo .py (sem extensao). O main.py
+#   descobre os algoritmos sozinho; nao precisa editar nada la.
+# - Veja a lista atual com: python3 main.py --help
 # - Use maze_builders.dead_end_dfs como referencia pronta.
 #
 # ============================================================

@@ -35,7 +35,12 @@ from maze import Node
 #   antigos espalhados pelos nos.
 #
 # Como testar:
-# - No main.py, passe a sua funcao solve no parametro "solver" do Maze.
+# - Rode a partir de src/:
+#       python3 main.py --solver bfs
+# - O nome passado e o nome deste arquivo .py (sem extensao). O main.py
+#   descobre os algoritmos sozinho; nao precisa editar nada la.
+# - Combine com qualquer builder, ex.: python3 main.py --builder dead_end_dfs --solver bfs
+# - Veja a lista atual com: python3 main.py --help
 # - Use maze_solvers.dfs como referencia pronta.
 #
 # ============================================================
