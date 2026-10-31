@@ -7,6 +7,9 @@
 
 import random
 
+from maze import Node
+
+
 def build(start: Node):
     ref_visited_num = start.visited + 1
 

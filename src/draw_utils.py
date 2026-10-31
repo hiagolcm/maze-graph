@@ -1,5 +1,6 @@
 import pygame
 from constants import MAZE_HEIGHT, MAZE_WIDTH, MULTIPLIER
+from maze import Node
 
 THICKNESS = 1
 

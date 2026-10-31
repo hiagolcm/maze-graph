@@ -1,5 +1,8 @@
 import random
 
+from maze import Node
+
+
 def solve(start: Node, end: Node, visit):
     ref_visited_num = start.visited + 1
 
