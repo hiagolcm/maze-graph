@@ -1,6 +1,8 @@
 import pygame
 
-from maze import Maze, Node, navigate, break_walls_dfs, solve_dfs
+import maze_builders.dfs_builder as dfs_builder
+import maze_solvers.dfs_solver as dfs_solver
+from maze import Maze, Node, navigate
 
 MAZE_WIDTH = 100
 MAZE_HEIGHT = 100
@@ -58,7 +60,7 @@ def add_to_drawing_buffer(node: Node, buffer):
 
 
 maze = Maze(MAZE_WIDTH, MAZE_HEIGHT)
-break_walls_dfs(maze.first)
+dfs_builder.build(maze.first)
 # maze.open_entrance_and_exit()
 
 # pygame setup
@@ -75,7 +77,7 @@ screen.fill("white")
 navigate(maze.first, lambda node: draw_square(node, screen))
 
 buffer = []
-solve_dfs(maze.first, maze.last, lambda node: add_to_drawing_buffer(node, buffer))
+dfs_solver.solve(maze.first, maze.last, lambda node: add_to_drawing_buffer(node, buffer))
 
 
 while running:

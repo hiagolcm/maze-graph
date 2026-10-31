@@ -31,6 +31,19 @@ class Node:
                 back.is_path_free = True
                 return
 
+    def get_links(self):
+        neighbors = [
+            self.left_node,
+            self.right_node,
+            self.up_node,
+            self.down_node,
+        ]
+
+        random.shuffle(neighbors)
+
+        return neighbors
+
+
     def get_reachable_neighbors(self):
         links = [
             self.left_node,
@@ -45,36 +58,9 @@ class Node:
             if l.node != None and l.is_path_free:
                 reachable.append(l.node)
 
+        random.shuffle(reachable)
+
         return reachable
-
-def break_walls_dfs(start: Node):
-    ref_visited_num = start.visited + 1
-
-    stack = [start]
-    start.visited = ref_visited_num
-
-    while stack:
-        node = stack[-1]
-
-        if node.is_dead_end(ref_visited_num):
-            stack.pop()
-            continue
-
-        links = [
-            node.left_node,
-            node.right_node,
-            node.up_node,
-            node.down_node,
-        ]
-        random.shuffle(links)
-
-        for link in links:
-            neighbor = link.node
-            if neighbor is not None and neighbor.visited != ref_visited_num:
-                node.open_passage(link)
-                neighbor.visited = ref_visited_num
-                stack.append(neighbor)
-                break
 
 
 def navigate(start: Node, visit):
@@ -97,32 +83,6 @@ def navigate(start: Node, visit):
         for neighbor in neighbors:
             if neighbor is not None and neighbor.visited != ref_visited_num:
                 stack.append(neighbor)
-
-
-def solve_dfs(start: Node, end: Node, visit):
-    ref_visited_num = start.visited + 1
-
-    start.visited = ref_visited_num
-
-    stack = [start]
-
-    while len(stack) > 0:
-        current = stack.pop()
-        current.visited = ref_visited_num
-        visit(current)
-
-        if current == end:
-            return True
-
-        neighbors = current.get_reachable_neighbors()
-        random.shuffle(neighbors)
-
-        for n in neighbors:
-            if n != None and n.visited != ref_visited_num:
-                stack.append(n)
-
-    return False
-
 
 
 class Maze:
