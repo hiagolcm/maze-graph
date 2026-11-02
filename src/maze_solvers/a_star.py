@@ -1,4 +1,4 @@
-import random
+import heapq
 
 from maze import Node
 
@@ -52,6 +52,57 @@ from maze import Node
 # - A cada passo, expanda o no de menor f e relaxe os vizinhos alcancaveis.
 # - A heuristica de Manhattan nunca superestima, entao o caminho achado e otimo.
 
+def heuristic (node:Node, end: Node) -> int: 
+    return abs(node.x - end.x) + abs(node.y - end.y)
+
 
 def solve(start: Node, end: Node, draw_node):
-    raise NotImplementedError("Implemente o A* aqui")
+    open_set = [] 
+    counter = 0
+    
+    
+    heapq.heappush(
+        open_set,
+        (heuristic(start,end), counter, start)
+    )
+    g = {start: 0}
+    closed_set = set()
+    
+    while open_set:
+        _,_, current = heapq.heappop(open_set)
+        
+        if current in closed_set:
+            continue
+        
+        if current == end:
+            current.state = "EXPANDED"
+            draw_node(current, "EXPANDED")
+            return True
+        
+        closed_set.add(current)
+        current.visited = True
+        current.state = "EXPANDED"
+        draw_node(current, "EXPANDED")
+        
+        for neighbor in current.get_reachable_neighbors():
+            possible_g = g[current] + 1
+            
+            if possible_g >= g.get(neighbor,float("inf")):
+                continue
+            
+            g[neighbor] = possible_g
+            
+            f = possible_g + heuristic(neighbor, end)
+            
+            counter += 1
+            
+            heapq.heappush(
+                open_set,
+                (f, counter, neighbor)
+            )
+
+            neighbor.state = "DISCOVERED"
+            draw_node(neighbor, "DISCOVERED")
+
+    return False
+    
