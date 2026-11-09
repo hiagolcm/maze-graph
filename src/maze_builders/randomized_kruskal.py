@@ -58,6 +58,63 @@ from maze import Node
 # - Dica: para listar todas as paredes, percorra a grade seguindo os .node dos
 #   vizinhos (is_path_free ainda esta todo False aqui).
 
-
 def build(start: Node):
-    raise NotImplementedError("Implemente o Kruskal aleatorizado aqui")
+    # Encontra todos os nós do labirinto
+    nodes = []
+    stack = [start]
+    visited = set()
+
+    while stack:
+        current = stack.pop()
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+        nodes.append(current)
+
+        for link in current.get_links():
+            if link.node is not None and link.node not in visited:
+                stack.append(link.node)
+
+    # Cada nó começa em seu próprio conjunto
+    parent = {node: node for node in nodes}
+
+    def find(node):
+        if parent[node] != node:
+            parent[node] = find(parent[node])
+        return parent[node]
+
+    def union(node_a, node_b):
+        root_a = find(node_a)
+        root_b = find(node_b)
+
+        if root_a == root_b:
+            return False
+
+        parent[root_b] = root_a
+        return True
+
+    # Cria a lista de paredes entre os nós
+    walls = []
+
+    for node in nodes:
+        for link in node.get_links():
+            neighbor = link.node
+
+            if neighbor is not None:
+                walls.append((node, link, neighbor))
+
+    # Embaralha as paredes aleatoriamente
+    random.shuffle(walls)
+
+    # Analisa cada parede
+    for node, link, neighbor in walls:
+        # Abre a passagem somente se não criar um ciclo
+        if union(node, neighbor):
+            node.open_passage(link)
+
+    # Marca todos os nós como visitados
+    for node in nodes:
+        node.visited = True
+
