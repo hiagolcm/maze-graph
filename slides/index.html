@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Labirintos como Grafos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --frame: #1a1a19;
+  --surface: #fcfcfb;
+  --surface-2: #f3f2ee;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #8a8984;
+  --grid: #e4e3df;
+  --rock: #e4e3df;
+  --wall: #22211f;
+  --blue: #2a78d6;
+  --blue-pale: #cde2fb;
+  --orange: #eb6834;
+  --orange-pale: #fbd9c9;
+  --aqua: #1baf7a;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--frame); overflow: hidden; }
+body { font-family: var(--sans); color: var(--ink); }
+
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1280px; height: 720px;
+  transform-origin: center center;
+  background: var(--surface);
+  overflow: hidden;
+}
+.slide {
+  position: absolute; inset: 0;
+  padding: 52px 72px 64px;
+  display: none; flex-direction: column;
+}
+.slide.active { display: flex; }
+
+.kicker { font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin: 0 0 10px; }
+h1 { font-size: 64px; line-height: 1.05; margin: 0; letter-spacing: -.02em; }
+h2 { font-size: 38px; line-height: 1.15; margin: 0 0 24px; letter-spacing: -.01em; }
+h3 { font-size: 20px; margin: 0 0 10px; }
+p, li { font-size: 21px; line-height: 1.5; color: var(--ink-2); }
+p { margin: 0 0 14px; }
+ul { margin: 0; padding-left: 24px; }
+li { margin-bottom: 10px; }
+li::marker { color: var(--muted); }
+strong { color: var(--ink); font-weight: 600; }
+code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+.small { font-size: 16px; }
+.muted { color: var(--muted); }
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; flex: 1; min-height: 0; }
+.cols.wide-left { grid-template-columns: 1.1fr .9fr; }
+.cols.wide-right { grid-template-columns: .85fr 1.15fr; }
+.cols > div { min-width: 0; }
+.center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+/* Capa e divisores */
+.title-slide { justify-content: center; }
+.title-slide h1 { font-size: 76px; }
+.title-slide .sub { font-size: 26px; color: var(--ink-2); margin-top: 20px; max-width: 620px; }
+.title-slide .meta { margin-top: 48px; font-size: 18px; color: var(--muted); }
+.title-art { position: absolute; right: 64px; top: 50%; transform: translateY(-50%); }
+.section { justify-content: center; background: var(--surface-2); }
+.section .num { font-size: 120px; font-weight: 700; color: var(--grid); line-height: 1; margin-bottom: 8px; }
+.section h1 { font-size: 60px; }
+.section p { font-size: 24px; margin-top: 16px; max-width: 760px; }
+
+/* Cartoes */
+.cards { display: grid; gap: 18px; }
+.cards.three { grid-template-columns: repeat(3, 1fr); }
+.cards.two { grid-template-columns: repeat(2, 1fr); }
+.card { background: var(--surface-2); border-radius: 12px; padding: 20px 22px; }
+.card h3 { font-size: 19px; }
+.card p, .card li { font-size: 17px; margin-bottom: 6px; }
+.big-num { font-size: 40px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+
+/* Codigo */
+pre {
+  font-family: var(--mono); font-size: 15px; line-height: 1.55;
+  background: var(--surface-2); border-radius: 12px; padding: 18px 22px; margin: 0;
+  color: var(--ink); overflow: hidden;
+}
+pre .c { color: var(--muted); }
+pre .k { color: var(--blue); font-weight: 600; }
+
+/* Animacoes */
+.anim { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.anim canvas { display: block; background: var(--surface); }
+.anim .stat { font-family: var(--mono); font-size: 14px; color: var(--ink-2); min-height: 20px; text-align: center; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.controls button, .controls select {
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  background: var(--surface-2); color: var(--ink); border: 1px solid var(--grid);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer;
+}
+.controls button:hover, .controls select:hover { border-color: var(--muted); }
+.controls button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); min-width: 96px; }
+.controls label { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.controls input[type=range] { width: 110px; accent-color: var(--ink); }
+
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 15px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+.race { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.race h3 { text-align: center; margin-bottom: 4px; }
+
+.complexity { font-family: var(--mono); font-size: 15px; color: var(--ink-2); margin-top: 8px; }
+
+/* Graficos */
+.chart { position: relative; }
+.chart svg { display: block; overflow: visible; }
+.chart text { font-family: var(--sans); }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--ink); color: var(--surface);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.5; white-space: nowrap;
+  opacity: 0; transition: opacity .1s; z-index: 5;
+}
+.tooltip b { font-weight: 600; }
+.tooltip i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+
+table.data { border-collapse: collapse; width: 100%; font-size: 17px; }
+table.data th, table.data td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--grid); }
+table.data th { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data td { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+table.data td.best { color: var(--ink); font-weight: 700; }
+
+/* Rodape */
+#footer {
+  position: absolute; left: 72px; right: 72px; bottom: 22px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--muted); z-index: 10; pointer-events: none;
+}
+#progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--blue); transition: width .25s; z-index: 10; }
+#nav { pointer-events: auto; display: flex; gap: 6px; }
+#nav button { background: none; border: 1px solid var(--grid); border-radius: 6px; color: var(--ink-2); cursor: pointer; font-size: 13px; padding: 3px 10px; }
+
+/* Modelagem */
+.model-caption { font-size: 19px; color: var(--ink-2); min-height: 90px; }
+.model-steps { display: flex; gap: 8px; margin-bottom: 16px; }
+.model-steps span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.model-steps span.on { background: var(--ink); color: var(--surface); }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- 1. Capa -->
+<section class="slide title-slide">
+  <p class="kicker">Algoritmos em Grafos</p>
+  <h1>Labirintos<br>como grafos</h1>
+  <p class="sub">Como gerar labirintos com árvores geradoras aleatórias e resolvê-los com DFS, BFS e A*.</p>
+  <p class="meta">maze-graph · github.com/hiagolcm/maze-graph</p>
+  <div class="title-art anim" data-anim='{"kind":"build","algo":"dfs","w":22,"h":22,"seed":7,"size":440,"autoplay":true,"speed":62,"bare":true}'></div>
+</section>
+
+<!-- 2. Roteiro -->
+<section class="slide">
+  <p class="kicker">Roteiro</p>
+  <h2>O que vamos ver</h2>
+  <div class="cards two" style="margin-top:12px">
+    <div class="card"><h3>1. Modelagem</h3><p>Como uma grade de células vira um grafo, e por que um labirinto "perfeito" é uma árvore geradora.</p></div>
+    <div class="card"><h3>2. Construção</h3><p>Três jeitos de sortear uma árvore geradora: DFS com backtracking, Prim e Kruskal aleatorizados.</p></div>
+    <div class="card"><h3>3. Resolução</h3><p>Três buscas para ir da entrada à saída: DFS, BFS e A* com distância de Manhattan.</p></div>
+    <div class="card"><h3>4. Resultados</h3><p>Benchmark com 900 labirintos: quanto cada busca explora em cada tipo de labirinto, e por quê.</p></div>
+  </div>
+</section>
+
+<!-- 3. Introducao -->
+<section class="slide">
+  <p class="kicker">Introdução</p>
+  <h2>Dois problemas clássicos de grafos, disfarçados de jogo</h2>
+  <div class="cols wide-left">
+    <div>
+      <ul>
+        <li><strong>Gerar</strong> um labirinto: abrir paredes de uma grade de forma aleatória, mas de modo que todo ponto seja alcançável e não existam atalhos.</li>
+        <li><strong>Resolver</strong> o labirinto: achar um caminho da entrada até a saída andando só por passagens abertas.</li>
+        <li>Gerar vira <strong>sortear uma árvore geradora</strong> da grade. Resolver vira <strong>busca em grafo</strong>.</li>
+        <li>O projeto implementa 3 geradores e 3 buscas, intercambiáveis, com visualização em pygame.</li>
+      </ul>
+    </div>
+    <div class="center">
+      <div class="anim" data-anim='{"kind":"solve","algo":"bfs","builder":"dfs","w":16,"h":16,"seed":3,"size":360,"speed":45,"bare":true,"autoplay":true,"loop":true}'></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Modelagem -->
+<section class="slide" data-steps="5" id="model-slide">
+  <p class="kicker">Modelagem</p>
+  <h2>Da grade ao grafo</h2>
+  <div class="cols wide-right">
+    <div>
+      <div class="model-steps"><span>Grade</span><span>Vértices</span><span>Arestas</span><span>Árvore</span><span>Labirinto</span></div>
+      <div class="model-caption" id="model-caption"></div>
+      <div class="card" style="margin-top:12px">
+        <p class="small" style="margin:0">Use <strong>→</strong> para avançar as etapas desta modelagem.</p>
+      </div>
+    </div>
+    <div class="center"><svg id="model-svg" width="520" height="420" viewBox="0 0 520 420"></svg></div>
+  </div>
+</section>
+
+<!-- 5. Arvore geradora -->
+<section class="slide">
+  <p class="kicker">Modelagem</p>
+  <h2>Labirinto perfeito = árvore geradora da grade</h2>
+  <div class="cards three" style="margin-bottom:28px">
+    <div class="card"><h3>Conexo</h3><p>Toda célula é alcançável a partir de qualquer outra.</p></div>
+    <div class="card"><h3>Acíclico</h3><p>Não há atalhos: nenhuma volta leva ao mesmo lugar por outro caminho.</p></div>
+    <div class="card"><h3>|E| = |V| − 1</h3><p>Uma grade w×h tem w·h vértices; o labirinto abre exatamente w·h − 1 passagens.</p></div>
+  </div>
+  <ul>
+    <li><strong>Consequência 1:</strong> entre quaisquer duas células existe <strong>exatamente um</strong> caminho simples. Toda busca correta acha o mesmo caminho, que é também o mais curto.</li>
+    <li><strong>Consequência 2:</strong> construir um labirinto = escolher uma árvore geradora aleatória do grafo-grade G(w, h).</li>
+    <li>O que distingue os geradores é <strong>qual distribuição</strong> de árvores eles produzem, e isso muda muito a "cara" do labirinto.</li>
+  </ul>
+</section>
+
+<!-- 6. No codigo -->
+<section class="slide">
+  <p class="kicker">Modelagem</p>
+  <h2>A representação no código</h2>
+  <div class="cols">
+    <div>
+      <pre><span class="k">class</span> Neighbor:
+    <span class="k">def</span> __init__(self, node, is_path_free):
+        self.node = node              <span class="c"># vizinho na grade, ou None na borda</span>
+        self.is_path_free = is_path_free  <span class="c"># aresta do labirinto?</span>
+
+<span class="k">class</span> Node:
+    <span class="k">def</span> __init__(self, left, up, right, down, x, y):
+        self.visited = False
+        self.left_node = Neighbor(left, False)
+        ...
+
+    <span class="k">def</span> open_passage(self, link):
+        link.is_path_free = True      <span class="c"># abre nos dois sentidos</span>
+        <span class="k">for</span> back <span class="k">in</span> link.node.links():
+            <span class="k">if</span> back.node <span class="k">is</span> self:
+                back.is_path_free = True</pre>
+    </div>
+    <div>
+      <ul>
+        <li>Lista de adjacência embutida: cada <code>Node</code> guarda até 4 vizinhos.</li>
+        <li>Dois grafos no mesmo objeto:
+          <ul style="margin-top:8px">
+            <li><code>.node</code> é o <strong>grafo-grade</strong> (todas as arestas possíveis).</li>
+            <li><code>is_path_free</code> marca as arestas do <strong>labirinto</strong> (a árvore).</li>
+          </ul>
+        </li>
+        <li><strong>Builder</strong>: <code>build(start)</code> abre passagens.</li>
+        <li><strong>Solver</strong>: <code>solve(start, end, draw_node)</code> retorna se achou a saída.</li>
+        <li>O <code>main.py</code> descobre os algoritmos pelo nome do arquivo.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Secao construcao -->
+<section class="slide section">
+  <div class="num">01</div>
+  <h1>Construção</h1>
+  <p>Três algoritmos que sorteiam uma árvore geradora. Todos começam com todas as paredes fechadas.</p>
+</section>
+
+<!-- 8. DFS builder -->
+<section class="slide">
+  <p class="kicker">Construção</p>
+  <h2>DFS com backtracking</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li>Mantém uma <strong>pilha</strong> com o caminho atual.</li>
+        <li>Do topo, escolhe um vizinho <strong>não visitado</strong> ao acaso, abre a parede e empilha.</li>
+        <li>Sem vizinho livre (beco), <strong>desempilha</strong> e volta.</li>
+        <li>Cada célula ganha exatamente uma aresta de entrada, então o resultado é uma árvore.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:var(--rock)"></i>não visitada</span>
+        <span><i style="background:var(--blue-pale)"></i>na pilha</span>
+        <span><i style="background:var(--blue)"></i>topo</span>
+      </div>
+      <p class="complexity">tempo O(V) · memória O(V) para a pilha</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"build","algo":"dfs","w":24,"h":24,"seed":11,"size":410,"speed":50}'></div>
+  </div>
+</section>
+
+<!-- 9. Prim -->
+<section class="slide">
+  <p class="kicker">Construção</p>
+  <h2>Prim aleatorizado</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li>Mantém a <strong>fronteira</strong>: paredes entre uma célula da árvore e uma de fora.</li>
+        <li>Sorteia uma parede da fronteira. Se a célula do outro lado está fora, abre e adiciona as novas paredes.</li>
+        <li>É o Prim do MST com <strong>pesos aleatórios</strong>: cresce uma única árvore a partir da origem.</li>
+        <li>A árvore cresce "em mancha", em todas as direções.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:var(--rock)"></i>fora da árvore</span>
+        <span><i style="background:var(--orange-pale)"></i>fronteira</span>
+        <span><i style="background:var(--blue)"></i>recém-adicionada</span>
+      </div>
+      <p class="complexity">tempo O(E) com remoção O(1) por troca com o último</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"build","algo":"prim","w":24,"h":24,"seed":11,"size":410,"speed":50}'></div>
+  </div>
+</section>
+
+<!-- 10. Kruskal -->
+<section class="slide">
+  <p class="kicker">Construção</p>
+  <h2>Kruskal aleatorizado</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li>Embaralha <strong>todas</strong> as paredes internas da grade.</li>
+        <li>Para cada parede: se as duas células estão em <strong>componentes diferentes</strong>, abre e une. Senão, mantém (abrir criaria ciclo).</li>
+        <li>Componentes controlados por <strong>Union-Find</strong> com compressão de caminho.</li>
+        <li>Floresta: várias árvores crescem ao mesmo tempo e se fundem.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:hsl(200 55% 82%)"></i><i style="background:hsl(40 60% 80%)"></i>componentes</span>
+        <span><i style="background:var(--good)"></i>parede aberta</span>
+        <span><i style="background:var(--critical)"></i>rejeitada (ciclo)</span>
+      </div>
+      <p class="complexity">tempo O(E · α(V)) após embaralhar</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"build","algo":"kruskal","w":24,"h":24,"seed":11,"size":410,"speed":55}'></div>
+  </div>
+</section>
+
+<!-- 11. Texturas -->
+<section class="slide">
+  <p class="kicker">Construção</p>
+  <h2>Mesma grade, árvores muito diferentes</h2>
+  <div class="race" id="texture-race"></div>
+  <p class="small muted" style="margin-top:14px; text-align:center">Labirintos 30×30 com o caminho entre os cantos destacado. <span style="pointer-events:auto"></span></p>
+  <div class="controls" style="margin-top:4px"><button id="texture-new">Sortear de novo</button></div>
+</section>
+
+<!-- 12. Secao resolucao -->
+<section class="slide section">
+  <div class="num">02</div>
+  <h1>Resolução</h1>
+  <p>Três buscas a partir da entrada. O labirinto é uma árvore, então todas acham o mesmo caminho: o que muda é quanto exploram.</p>
+</section>
+
+<!-- 13. DFS solver -->
+<section class="slide">
+  <p class="kicker">Resolução</p>
+  <h2>Busca em profundidade (DFS)</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li><strong>Pilha</strong>: sempre continua pelo vizinho mais recente.</li>
+        <li>Mergulha num corredor até o fim; num beco, volta ao último desvio.</li>
+        <li>Não garante o menor caminho em grafos gerais. Numa árvore, o único caminho é o menor.</li>
+        <li>Ordem dos vizinhos é aleatória: sorte conta.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:rgba(27,175,122,.25)"></i>visitada</span>
+        <span><i style="background:rgba(27,175,122,.6)"></i>na pilha</span>
+        <span><i style="background:var(--aqua)"></i>caminho</span>
+      </div>
+      <p class="complexity">tempo O(V + E) · memória O(V)</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"solve","algo":"dfs","builder":"kruskal","w":24,"h":24,"seed":5,"size":410,"speed":42,"chooser":true}'></div>
+  </div>
+</section>
+
+<!-- 14. BFS -->
+<section class="slide">
+  <p class="kicker">Resolução</p>
+  <h2>Busca em largura (BFS)</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li><strong>Fila</strong>: visita em ordem de distância à entrada, camada por camada.</li>
+        <li>Garante o <strong>menor caminho</strong> em número de passos em qualquer grafo sem pesos.</li>
+        <li>Expande como uma onda, sem nenhuma noção de onde está a saída.</li>
+        <li>Se a saída é a célula mais distante, visita praticamente tudo.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:rgba(235,104,52,.25)"></i>visitada</span>
+        <span><i style="background:rgba(235,104,52,.6)"></i>na fila</span>
+        <span><i style="background:var(--orange)"></i>caminho</span>
+      </div>
+      <p class="complexity">tempo O(V + E) · memória O(V)</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"solve","algo":"bfs","builder":"kruskal","w":24,"h":24,"seed":5,"size":410,"speed":42,"chooser":true}'></div>
+  </div>
+</section>
+
+<!-- 15. A* -->
+<section class="slide">
+  <p class="kicker">Resolução</p>
+  <h2>A* com distância de Manhattan</h2>
+  <div class="cols wide-right">
+    <div>
+      <ul>
+        <li><strong>Fila de prioridade</strong> por f = g + h.</li>
+        <li><strong>g</strong>: passos desde a entrada. <strong>h</strong>: |x − x<sub>fim</sub>| + |y − y<sub>fim</sub>|.</li>
+        <li>h é <strong>admissível</strong> e <strong>consistente</strong> na grade: o menor caminho é garantido.</li>
+        <li>Um nó só é fechado <strong>ao sair da fila</strong>; marcar ao entrar quebra a garantia em grafos com ciclos.</li>
+      </ul>
+      <div class="legend" style="margin-top:18px">
+        <span><i style="background:rgba(42,120,214,.25)"></i>fechada</span>
+        <span><i style="background:rgba(42,120,214,.6)"></i>na fila</span>
+        <span><i style="background:var(--blue)"></i>caminho</span>
+      </div>
+      <p class="complexity">tempo O(E log V) · memória O(V)</p>
+    </div>
+    <div class="anim" data-anim='{"kind":"solve","algo":"astar","builder":"kruskal","w":24,"h":24,"seed":5,"size":410,"speed":42,"chooser":true}'></div>
+  </div>
+</section>
+
+<!-- 16. Corrida -->
+<section class="slide">
+  <p class="kicker">Resolução</p>
+  <h2>Lado a lado, no mesmo labirinto</h2>
+  <div class="race" id="race"></div>
+  <div class="controls" id="race-controls" style="margin-top:14px"></div>
+</section>
+
+<!-- 17. Corretude -->
+<section class="slide">
+  <p class="kicker">Resolução</p>
+  <h2>Como verificamos a corretude</h2>
+  <div class="cols">
+    <div>
+      <h3>Builders</h3>
+      <p class="small">150 labirintos por builder, de 1×1 a 20×20:</p>
+      <ul class="small">
+        <li class="small">conexo: busca a partir da origem alcança as w·h células;</li>
+        <li class="small">acíclico: exatamente w·h − 1 passagens abertas;</li>
+        <li class="small">simétrico: toda passagem aberta está aberta dos dois lados.</li>
+      </ul>
+      <h3 style="margin-top:22px">Argumento (DFS)</h3>
+      <p class="small">Uma parede só é aberta para um vizinho ainda não visitado, que é marcado na hora: cada célula recebe uma única aresta de entrada. A pilha só esvazia quando nenhuma célula alcançável ficou de fora.</p>
+    </div>
+    <div>
+      <h3>Solvers</h3>
+      <p class="small">Nos mesmos labirintos e em grades com ciclos (30% e 100% das paredes abertas):</p>
+      <ul class="small">
+        <li class="small">sempre acham a saída e retornam <code>False</code> quando não há caminho;</li>
+        <li class="small">BFS visita as células em ordem não decrescente de distância;</li>
+        <li class="small">A* nunca expande um nó com g* + h maior que o ótimo;</li>
+        <li class="small">BFS e A* nunca visitam uma célula duas vezes.</li>
+      </ul>
+      <div class="card" style="margin-top:22px">
+        <p class="small" style="margin:0"><strong>Achado na revisão:</strong> o DFS original pode desenhar a mesma célula mais de uma vez em grafos com ciclos. Não afeta labirintos perfeitos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18. Secao resultados -->
+<section class="slide section">
+  <div class="num">03</div>
+  <h1>Resultados</h1>
+  <p id="method-text">Benchmark com sementes fixas: todos os solvers resolvem os mesmos labirintos, com os mesmos pontos de entrada e saída.</p>
+</section>
+
+<!-- 19. Metodologia -->
+<section class="slide">
+  <p class="kicker">Resultados</p>
+  <h2>Metodologia</h2>
+  <div class="cards three" id="method-cards"></div>
+  <ul style="margin-top:26px">
+    <li><strong>Métrica principal:</strong> fração das células visitadas até achar a saída. Não depende da máquina.</li>
+    <li><strong>Vitória:</strong> o solver que visitou menos células naquele labirinto, com aqueles pontos. Empate divide o ponto.</li>
+    <li>Barras de erro: intervalo de confiança de 95% da média.</li>
+  </ul>
+</section>
+
+<!-- 20. Labirintos gerados -->
+<section class="slide">
+  <p class="kicker">Resultados</p>
+  <h2>Primeiro: os labirintos são muito diferentes</h2>
+  <div class="cols">
+    <div class="chart" id="chart-path"></div>
+    <div class="chart" id="chart-deadends"></div>
+  </div>
+  <p class="small" style="margin-top:8px">O DFS gera <strong>corredores longos</strong> com poucos becos. Prim e Kruskal geram <strong>muitos ramos curtos</strong> e um caminho quase reto entre os cantos.</p>
+</section>
+
+<!-- 21. Canto a canto -->
+<section class="slide">
+  <p class="kicker">Resultados · canto a canto</p>
+  <h2>Células visitadas até a saída</h2>
+  <div class="legend chart-legend" style="margin-bottom:8px"></div>
+  <div class="chart" id="chart-corners"></div>
+  <p class="small" id="corners-note" style="margin-top:6px"></p>
+</section>
+
+<!-- 22. Pontos aleatorios -->
+<section class="slide">
+  <p class="kicker">Resultados · pontos aleatórios</p>
+  <h2>Quando a saída pode estar em qualquer lugar</h2>
+  <div class="legend chart-legend" style="margin-bottom:8px"></div>
+  <div class="chart" id="chart-random"></div>
+  <p class="small" id="random-note" style="margin-top:6px"></p>
+</section>
+
+<!-- 23. Vitorias -->
+<section class="slide">
+  <p class="kicker">Resultados</p>
+  <h2>Quem explora menos, labirinto a labirinto</h2>
+  <div class="cols">
+    <div>
+      <h3>Vitórias · canto a canto</h3>
+      <div id="wins-corners"></div>
+      <h3 style="margin-top:24px">Vitórias · pontos aleatórios</h3>
+      <div id="wins-random"></div>
+    </div>
+    <div>
+      <h3>Custo por célula visitada (µs, mediana)</h3>
+      <div id="cost-table"></div>
+      <p class="small" style="margin-top:18px">O A* paga a fila de prioridade (O(log V) por operação). Ele só compensa quando explora bem menos células que os outros.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 24. Conclusoes -->
+<section class="slide">
+  <p class="kicker">Conclusões</p>
+  <h2>O que os números mostram</h2>
+  <ul id="conclusions"></ul>
+</section>
+
+<!-- 25. Fim -->
+<section class="slide title-slide">
+  <p class="kicker">Obrigado</p>
+  <h1>Perguntas?</h1>
+  <div style="margin-top:36px">
+    <pre style="display:inline-block">cd src
+python3 main.py --builder randomized_prim --solver a_star
+python3 benchmark.py --output ../BENCHMARK.md</pre>
+  </div>
+  <p class="meta">github.com/hiagolcm/maze-graph</p>
+</section>
+
+<div id="progress"></div>
+<div id="footer">
+  <span>Labirintos como grafos</span>
+  <span id="nav"><button id="prev">←</button><span id="counter"></span><button id="next">→</button></span>
+  <span>P: play/pause · R: reiniciar · F: tela cheia</span>
+</div>
+</div>
+
+<script src="results.js"></script>
+<script>
+// Leitura dos resultados (escrita a mao a partir de docs/benchmark/results.json)
+window.NOTES = {
+  corners: "Com a saída no canto oposto, quase todo ramo aponta para ela: a heurística não separa becos de bons caminhos. Em Prim, o BFS visita <strong>100%</strong> das células, porque a saída é a célula mais distante.",
+  random: "Com a saída em qualquer lugar, a heurística volta a ajudar: em Prim, o A* visita <strong>26%</strong> das células, contra ~50% do BFS e do DFS.",
+  conclusions: [
+    "<strong>O gerador importa mais que a busca.</strong> O DFS cria corredores longos (caminho com 24% das células em 100×100); Prim e Kruskal criam ramos curtos e um caminho quase reto (2% a 4%).",
+    "<strong>O BFS nunca vence.</strong> Numa árvore, o A* com h consistente só fecha nós com g + h ≤ d*, um subconjunto dos nós com g ≤ d* que o BFS fecha.",
+    "<strong>A heurística depende da geometria.</strong> Canto a canto, quase todo ramo \"parece bom\" e o DFS vence em Prim e Kruskal. Com pontos aleatórios, o A* vence em 72% dos casos em Prim.",
+    "<strong>Explorar menos não é ser mais rápido.</strong> O A* custa ~1,6× mais por célula (fila de prioridade); só ganha em tempo quando explora bem menos.",
+    "<strong>Num labirinto perfeito</strong> o caminho é único: a garantia de ótimo do BFS e do A* não traz vantagem. Ela importa quando o labirinto tem ciclos.",
+  ],
+};
+</script>
+<script>
+// ============================================================
+// Grade, sorteio e algoritmos (portados de src/maze_builders e src/maze_solvers)
+// ============================================================
+const DX = [-1, 0, 1, 0], DY = [0, -1, 0, 1], OPP = [2, 3, 0, 1]; // esquerda, cima, direita, baixo
+
+class Grid {
+  constructor(w, h) { this.w = w; this.h = h; this.n = w * h; this.open = new Uint8Array(this.n); }
+  nb(i, d) {
+    const x = i % this.w + DX[d], y = Math.floor(i / this.w) + DY[d];
+    return x < 0 || y < 0 || x >= this.w || y >= this.h ? -1 : y * this.w + x;
+  }
+  carve(i, d) { const j = this.nb(i, d); this.open[i] |= 1 << d; this.open[j] |= 1 << OPP[d]; }
+  isOpen(i, d) { return (this.open[i] >> d) & 1; }
+  reach(i) { const r = []; for (let d = 0; d < 4; d++) if (this.isOpen(i, d)) r.push(this.nb(i, d)); return r; }
+}
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function shuffle(a, rng) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function newState(n) {
+  return {
+    visited: new Uint8Array(n), mark: new Uint8Array(n), path: new Uint8Array(n),
+    parent: new Int32Array(n).fill(-1), current: -1, count: 0, found: false,
+    find: null, wall: null, wallOk: false,
+  };
+}
+
+const BUILDERS = {
+  *dfs(g, rng, st) {
+    const stack = [0]; st.visited[0] = 1; st.mark[0] = 1;
+    while (stack.length) {
+      const c = stack[stack.length - 1]; st.current = c;
+      const opts = shuffle([0, 1, 2, 3], rng).filter(d => { const j = g.nb(c, d); return j >= 0 && !st.visited[j]; });
+      if (!opts.length) { stack.pop(); st.mark[c] = 0; yield; continue; }
+      const j = g.nb(c, opts[0]);
+      g.carve(c, opts[0]); st.visited[j] = 1; st.mark[j] = 1; stack.push(j);
+      yield;
+    }
+    st.current = -1;
+  },
+  *prim(g, rng, st) {
+    const frontier = [];
+    const add = c => {
+      for (const d of shuffle([0, 1, 2, 3], rng)) {
+        const j = g.nb(c, d);
+        if (j >= 0 && !st.visited[j]) { frontier.push([c, d]); st.mark[j] = 1; }
+      }
+    };
+    st.visited[0] = 1; st.current = 0; add(0); yield;
+    while (frontier.length) {
+      const k = Math.floor(rng() * frontier.length);
+      [frontier[k], frontier[frontier.length - 1]] = [frontier[frontier.length - 1], frontier[k]];
+      const [c, d] = frontier.pop(), j = g.nb(c, d);
+      if (st.visited[j]) continue;
+      g.carve(c, d); st.visited[j] = 1; st.mark[j] = 0; st.current = j; add(j);
+      yield;
+    }
+    st.current = -1;
+  },
+  *kruskal(g, rng, st) {
+    const walls = [];
+    for (let i = 0; i < g.n; i++) { if (g.nb(i, 2) >= 0) walls.push([i, 2]); if (g.nb(i, 3) >= 0) walls.push([i, 3]); }
+    shuffle(walls, rng);
+    const parent = new Int32Array(g.n).map((_, i) => i);
+    const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    st.find = find;
+    for (const [c, d] of walls) {
+      const j = g.nb(c, d), a = find(c), b = find(j);
+      st.wall = [c, d];
+      if (a !== b) { g.carve(c, d); parent[a] = b; st.wallOk = true; }
+      else st.wallOk = false;
+      yield;
+    }
+    st.wall = null;
+  },
+};
+
+function heapPush(h, item) {
+  h.push(item); let i = h.length - 1;
+  while (i > 0) { const p = (i - 1) >> 1; if (cmp(h[p], h[i]) <= 0) break; [h[p], h[i]] = [h[i], h[p]]; i = p; }
+}
+function heapPop(h) {
+  const top = h[0], last = h.pop();
+  if (h.length) {
+    h[0] = last; let i = 0;
+    for (;;) {
+      const l = 2 * i + 1, r = l + 1; let m = i;
+      if (l < h.length && cmp(h[l], h[m]) < 0) m = l;
+      if (r < h.length && cmp(h[r], h[m]) < 0) m = r;
+      if (m === i) break; [h[m], h[i]] = [h[i], h[m]]; i = m;
+    }
+  }
+  return top;
+}
+const cmp = (a, b) => a[0] - b[0] || a[1] - b[1];
+
+const SOLVERS = {
+  *dfs(g, s, e, rng, st) {
+    const stack = [s]; st.mark[s] = 1;
+    while (stack.length) {
+      const c = stack.pop(); st.mark[c] = 0;
+      if (st.visited[c]) continue;
+      st.visited[c] = 1; st.count++; st.current = c;
+      if (c === e) { st.found = true; return; }
+      for (const j of shuffle(g.reach(c), rng)) if (!st.visited[j]) { stack.push(j); st.mark[j] = 1; st.parent[j] = c; }
+      yield;
+    }
+  },
+  *bfs(g, s, e, rng, st) {
+    const q = [s]; let head = 0; st.mark[s] = 1;
+    while (head < q.length) {
+      const c = q[head++]; st.mark[c] = 0;
+      st.visited[c] = 1; st.count++; st.current = c;
+      if (c === e) { st.found = true; return; }
+      for (const j of shuffle(g.reach(c), rng)) if (!st.visited[j] && !st.mark[j]) { st.mark[j] = 1; st.parent[j] = c; q.push(j); }
+      yield;
+    }
+  },
+  *astar(g, s, e, rng, st) {
+    const ex = e % g.w, ey = Math.floor(e / g.w);
+    const hf = i => Math.abs(i % g.w - ex) + Math.abs(Math.floor(i / g.w) - ey);
+    const gs = new Float64Array(g.n).fill(Infinity); gs[s] = 0;
+    const heap = []; let tie = 0;
+    heapPush(heap, [hf(s), tie++, s]); st.mark[s] = 1;
+    while (heap.length) {
+      const [, , c] = heapPop(heap);
+      if (st.visited[c]) continue;
+      st.mark[c] = 0; st.visited[c] = 1; st.count++; st.current = c;
+      if (c === e) { st.found = true; return; }
+      for (const j of shuffle(g.reach(c), rng)) {
+        const ng = gs[c] + 1;
+        if (!st.visited[j] && ng < gs[j]) { gs[j] = ng; st.parent[j] = c; st.mark[j] = 1; heapPush(heap, [ng + hf(j), tie++, j]); }
+      }
+      yield;
+    }
+  },
+};
+
+function buildMaze(algo, w, h, seed) {
+  const g = new Grid(w, h), st = newState(g.n);
+  for (const _ of BUILDERS[algo](g, mulberry32(seed), st));
+  return g;
+}
+function cornerPath(g) {
+  // BFS so para marcar o caminho entre os cantos
+  const par = new Int32Array(g.n).fill(-1), seen = new Uint8Array(g.n), q = [0]; seen[0] = 1;
+  for (let k = 0; k < q.length; k++) for (const j of g.reach(q[k])) if (!seen[j]) { seen[j] = 1; par[j] = q[k]; q.push(j); }
+  const path = new Uint8Array(g.n); let len = 0;
+  for (let c = g.n - 1; c !== -1; c = par[c]) { path[c] = 1; len++; }
+  return { path, len };
+}
+
+// ============================================================
+// Desenho
+// ============================================================
+const SOLVER_COLOR = { dfs: "#1baf7a", bfs: "#eb6834", astar: "#2a78d6" };
+const C = { surface: "#fcfcfb", rock: "#e4e3df", wall: "#22211f", blue: "#2a78d6", bluePale: "#cde2fb", orangePale: "#fbd9c9", good: "#0ca30c", critical: "#d03b3b" };
+function rgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+let stageScale = 1;
+function sizeCanvas(cv, css) {
+  const r = (window.devicePixelRatio || 1) * Math.max(1, stageScale);
+  cv.style.width = cv.style.height = css + "px";
+  cv.width = cv.height = Math.round(css * r);
+  const ctx = cv.getContext("2d"); ctx.setTransform(cv.width / css, 0, 0, cv.height / css, 0, 0);
+  return ctx;
+}
+
+function render(ctx, css, g, st, look) {
+  const cell = Math.floor((css - 4) / Math.max(g.w, g.h));
+  const ox = Math.floor((css - cell * g.w) / 2), oy = Math.floor((css - cell * g.h) / 2);
+  ctx.fillStyle = C.surface; ctx.fillRect(0, 0, css, css);
+
+  let compSize = null;
+  if (look.algo === "kruskal" && st.find) {
+    compSize = new Int32Array(g.n);
+    for (let i = 0; i < g.n; i++) compSize[st.find(i)]++;
+  }
+  const color = SOLVER_COLOR[look.algo];
+
+  for (let i = 0; i < g.n; i++) {
+    const x = ox + (i % g.w) * cell, y = oy + Math.floor(i / g.w) * cell;
+    let fill = null;
+    if (look.kind === "build") {
+      if (compSize) {
+        const r = st.find(i);
+        if (compSize[r] > 1) fill = `hsl(${(r * 137.508) % 360} 55% 84%)`;
+      } else if (!st.visited[i]) fill = C.rock;
+      else if (st.mark[i]) fill = look.algo === "dfs" ? C.bluePale : C.orangePale;
+      if (look.algo === "prim" && !st.visited[i] && st.mark[i]) fill = C.orangePale;
+      if (i === st.current) fill = C.blue;
+    } else if (look.kind === "solve") {
+      if (st.path[i]) fill = color;
+      else if (st.mark[i]) fill = rgba(color, .6);
+      else if (st.visited[i]) fill = rgba(color, .25);
+      if (i === st.current && !st.found) fill = color;
+    } else if (look.kind === "static" && look.path && look.path[i]) fill = look.color;
+    if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, cell, cell); }
+  }
+
+  // Paredes: cada celula desenha a de cima e a da esquerda; as bordas fecham o resto
+  const lw = Math.max(1, Math.round(cell / 7));
+  ctx.strokeStyle = C.wall; ctx.lineWidth = lw; ctx.lineCap = "square";
+  ctx.beginPath();
+  const corners = look.kind !== "build";
+  for (let i = 0; i < g.n; i++) {
+    const cx = i % g.w, cy = Math.floor(i / g.w), x = ox + cx * cell, y = oy + cy * cell;
+    if (!g.isOpen(i, 1) && !(corners && i === 0)) { ctx.moveTo(x, y); ctx.lineTo(x + cell, y); }
+    if (!g.isOpen(i, 0)) { ctx.moveTo(x, y); ctx.lineTo(x, y + cell); }
+    if (cx === g.w - 1) { ctx.moveTo(x + cell, y); ctx.lineTo(x + cell, y + cell); }
+    if (cy === g.h - 1 && !(corners && i === g.n - 1)) { ctx.moveTo(x, y + cell); ctx.lineTo(x + cell, y + cell); }
+  }
+  ctx.stroke();
+
+  if (st && st.wall) {
+    const [c, d] = st.wall, x = ox + (c % g.w) * cell, y = oy + Math.floor(c / g.w) * cell;
+    ctx.strokeStyle = st.wallOk ? C.good : C.critical; ctx.lineWidth = Math.max(3, lw * 2.5);
+    ctx.beginPath();
+    if (d === 2) { ctx.moveTo(x + cell, y); ctx.lineTo(x + cell, y + cell); }
+    else { ctx.moveTo(x, y + cell); ctx.lineTo(x + cell, y + cell); }
+    ctx.stroke();
+  }
+}
+
+// ============================================================
+// Animacao com controles
+// ============================================================
+const BUILDER_NAMES = { dfs: "dead_end_dfs", prim: "randomized_prim", kruskal: "randomized_kruskal" };
+
+class Anim {
+  constructor(el, o) {
+    this.el = el; this.o = o;
+    this.canvas = document.createElement("canvas"); el.appendChild(this.canvas);
+    this.stat = document.createElement("div"); this.stat.className = "stat";
+    if (!o.bare) el.appendChild(this.stat);
+    this.reset();
+  }
+  reset() {
+    const o = this.o;
+    this.ctx = sizeCanvas(this.canvas, o.size);
+    this.st = newState(o.w * o.h);
+    if (o.kind === "build") {
+      this.g = new Grid(o.w, o.h);
+      this.it = BUILDERS[o.algo](this.g, mulberry32(o.seed), this.st);
+    } else {
+      this.g = buildMaze(o.builder, o.w, o.h, o.seed);
+      this.it = SOLVERS[o.algo](this.g, 0, this.g.n - 1, mulberry32(o.seed + 1), this.st);
+    }
+    this.done = false; this.steps = 0; this.draw();
+  }
+  step(n) {
+    for (let k = 0; k < n && !this.done; k++) {
+      if (this.it.next().done) { this.done = true; this.finish(); } else this.steps++;
+    }
+    this.draw();
+  }
+  finish() {
+    this.st.current = -1; this.st.wall = null;
+    if (this.o.kind === "solve" && this.st.found) {
+      this.st.mark.fill(0);
+      for (let c = this.g.n - 1; c !== -1; c = this.st.parent[c]) this.st.path[c] = 1;
+    }
+  }
+  draw() {
+    render(this.ctx, this.o.size, this.g, this.st, { kind: this.o.kind, algo: this.o.algo });
+    if (this.o.kind === "solve") {
+      const pct = (100 * this.st.count / this.g.n).toFixed(0);
+      this.stat.textContent = `visitadas: ${this.st.count} de ${this.g.n} (${pct}%)` + (this.done ? " · saída encontrada" : "");
+    } else {
+      this.stat.textContent = this.done ? `pronto em ${this.steps} passos · ${this.g.n - 1} passagens` : `passo ${this.steps}`;
+    }
+  }
+}
+
+const players = [];
+class Player {
+  constructor(anims, controlsEl, o) {
+    this.anims = anims; this.o = o; this.playing = false; this.acc = 0; this.speed = o.speed ?? 50;
+    this.slide = (controlsEl || anims[0].el).closest(".slide");
+    if (controlsEl) this.mountControls(controlsEl);
+    players.push(this);
+  }
+  mountControls(el) {
+    el.innerHTML = "";
+    const mk = (tag, text, cls) => { const b = document.createElement(tag); if (text) b.textContent = text; if (cls) b.className = cls; el.appendChild(b); return b; };
+    this.btn = mk("button", "▶ Rodar", "primary"); this.btn.onclick = () => this.toggle();
+    mk("button", "Passo").onclick = () => { this.pause(); this.anims.forEach(a => a.step(1)); };
+    mk("button", "Reiniciar").onclick = () => this.restart();
+    if (this.o.kind === "solve") mk("button", "Novo labirinto").onclick = () => { this.anims.forEach(a => a.o.seed += 17); this.restart(); };
+    if (this.o.chooser) {
+      const sel = mk("select");
+      for (const [k, v] of Object.entries(BUILDER_NAMES)) { const op = document.createElement("option"); op.value = k; op.textContent = v; sel.appendChild(op); }
+      sel.value = this.anims[0].o.builder;
+      sel.onchange = () => { this.anims.forEach(a => a.o.builder = sel.value); this.restart(); };
+    }
+    const lab = mk("label", "velocidade"); const r = document.createElement("input");
+    r.type = "range"; r.min = 0; r.max = 100; r.value = this.speed; r.oninput = () => this.speed = +r.value; lab.appendChild(r);
+  }
+  rate() { return Math.pow(10, (this.speed - 30) / 32); } // passos por quadro
+  toggle() { this.playing ? this.pause() : this.play(); }
+  play() {
+    if (this.anims.every(a => a.done)) this.anims.forEach(a => a.reset());
+    this.playing = true; this.setBtn();
+  }
+  pause() { this.playing = false; this.setBtn(); }
+  restart() { this.anims.forEach(a => a.reset()); this.acc = 0; this.pause(); }
+  setBtn() { if (this.btn) this.btn.textContent = this.playing ? "⏸ Pausar" : "▶ Rodar"; }
+  tick() {
+    if (!this.playing) return;
+    this.acc += this.rate();
+    const n = Math.floor(this.acc); this.acc -= n;
+    if (n > 0) this.anims.forEach(a => a.step(n));
+    if (this.anims.every(a => a.done)) {
+      if (this.o.loop) { this.pause(); setTimeout(() => { if (this.slide.classList.contains("active")) { this.anims.forEach(a => { a.o.seed += 1; a.reset(); }); this.play(); } }, 1600); }
+      else this.pause();
+    }
+  }
+}
+function loop() { players.forEach(p => p.tick()); requestAnimationFrame(loop); }
+
+// ============================================================
+// Slide de modelagem (SVG em etapas)
+// ============================================================
+const MODEL_CAPTIONS = [
+  "Uma grade de 6×4 células. No começo, todas as paredes estão fechadas.",
+  "Cada célula vira um <strong>vértice</strong>. |V| = 24.",
+  "Células vizinhas na grade podem ser ligadas: o <strong>grafo-grade</strong> tem |E| = 38 arestas possíveis.",
+  "O gerador escolhe uma <strong>árvore geradora</strong>: 23 arestas que ligam todos os vértices sem ciclos.",
+  "Cada aresta escolhida é uma <strong>parede aberta</strong>. As outras 15 continuam paredes. Pronto: um labirinto.",
+];
+function drawModel(step) {
+  const svg = document.getElementById("model-svg"), W = 6, H = 4, S = 80, ox = 20, oy = 50;
+  const g = buildMaze("dfs", W, H, 4);
+  const center = i => [ox + (i % W) * S + S / 2, oy + Math.floor(i / W) * S + S / 2];
+  let out = "";
+  const wallColor = step >= 1 && step <= 3 ? "#c9c8c3" : "#22211f";
+  // paredes
+  for (let i = 0; i < W * H; i++) {
+    const x = ox + (i % W) * S, y = oy + Math.floor(i / W) * S;
+    for (const [d, x1, y1, x2, y2] of [[1, x, y, x + S, y], [0, x, y, x, y + S], [2, x + S, y, x + S, y + S], [3, x, y + S, x + S, y + S]]) {
+      const j = g.nb(i, d);
+      if (step === 4 && j >= 0 && g.isOpen(i, d)) continue;
+      out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${wallColor}" stroke-width="${step === 4 || step === 0 ? 4 : 2}" stroke-linecap="square"/>`;
+    }
+  }
+  // arestas
+  if (step >= 2) {
+    for (let i = 0; i < W * H; i++) for (const d of [2, 3]) {
+      const j = g.nb(i, d); if (j < 0) continue;
+      const [x1, y1] = center(i), [x2, y2] = center(j), tree = g.isOpen(i, d);
+      if (step === 2) out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8a8984" stroke-width="2" stroke-dasharray="5 5"/>`;
+      else if (step === 3) out += tree ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a78d6" stroke-width="5" stroke-linecap="round"/>` : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e4e3df" stroke-width="2" stroke-dasharray="5 5"/>`;
+      else if (tree) out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#cde2fb" stroke-width="5" stroke-linecap="round"/>`;
+    }
+  }
+  // vertices
+  if (step >= 1) for (let i = 0; i < W * H; i++) {
+    const [x, y] = center(i);
+    const fill = step === 4 ? "#cde2fb" : "#2a78d6";
+    out += `<circle cx="${x}" cy="${y}" r="${step === 4 ? 5 : 8}" fill="${fill}" stroke="#fcfcfb" stroke-width="2"/>`;
+  }
+  svg.innerHTML = out;
+  document.getElementById("model-caption").innerHTML = MODEL_CAPTIONS[step];
+  document.querySelectorAll(".model-steps span").forEach((s, k) => s.classList.toggle("on", k === step));
+}
+
+// ============================================================
+// Comparacoes estaticas e corrida
+// ============================================================
+let textureSeed = 21;
+function drawTextures() {
+  const box = document.getElementById("texture-race"); box.innerHTML = "";
+  for (const algo of ["dfs", "prim", "kruskal"]) {
+    const wrap = document.createElement("div"); wrap.className = "anim";
+    const h = document.createElement("h3"); h.textContent = BUILDER_NAMES[algo]; wrap.appendChild(h);
+    const cv = document.createElement("canvas"); wrap.appendChild(cv);
+    const g = buildMaze(algo, 30, 30, textureSeed), { path, len } = cornerPath(g);
+    let dead = 0; for (let i = 0; i < g.n; i++) if (g.reach(i).length === 1) dead++;
+    render(sizeCanvas(cv, 330), 330, g, null, { kind: "static", path, color: "#cde2fb" });
+    const s = document.createElement("div"); s.className = "stat";
+    s.textContent = `caminho: ${len} células · becos: ${dead}`;
+    wrap.appendChild(s); box.appendChild(wrap);
+  }
+}
+
+function setupRace() {
+  const box = document.getElementById("race"), anims = [];
+  for (const [algo, label] of [["dfs", "DFS"], ["bfs", "BFS"], ["astar", "A*"]]) {
+    const wrap = document.createElement("div"); wrap.className = "anim";
+    const h = document.createElement("h3"); h.innerHTML = `<i style="display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;background:${SOLVER_COLOR[algo]}"></i>${label}`; wrap.appendChild(h);
+    box.appendChild(wrap);
+    anims.push(new Anim(wrap, { kind: "solve", algo, builder: "kruskal", w: 30, h: 30, seed: 9, size: 340 }));
+  }
+  new Player(anims, document.getElementById("race-controls"), { kind: "solve", chooser: true, speed: 48 });
+}
+
+// ============================================================
+// Graficos com os numeros do benchmark
+// ============================================================
+const B = window.BENCHMARK;
+const SOLVER_KEYS = ["a_star", "bfs", "dfs"];
+const SOLVER_LABEL = { a_star: "A*", bfs: "BFS", dfs: "DFS" };
+const SOLVER_HEX = { a_star: "#2a78d6", bfs: "#eb6834", dfs: "#1baf7a" };
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const pct = v => (v * 100).toFixed(1) + "%";
+
+function smallMultiples(el, scenario) {
+  const sizes = B.config.sizes, W = 360, H = 360, m = { l: 44, r: 44, t: 30, b: 42 };
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const xs = x => m.l + (x - sizes[0]) / (sizes[sizes.length - 1] - sizes[0]) * pw;
+  const ys = y => m.t + ph - y / 100 * ph;
+  el.style.display = "grid"; el.style.gridTemplateColumns = "repeat(3, 1fr)"; el.style.gap = "16px";
+  const tip = document.createElement("div"); tip.className = "tooltip"; el.appendChild(tip);
+
+  B.builders.forEach((b, bi) => {
+    const svg = svgEl("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, el);
+    svgEl("text", { x: m.l, y: 16, "font-size": 15, "font-weight": 600, fill: "#0b0b0b" }, svg).textContent = b;
+    for (const t of [0, 25, 50, 75, 100]) {
+      svgEl("line", { x1: m.l, x2: m.l + pw, y1: ys(t), y2: ys(t), stroke: "#e4e3df", "stroke-width": 1 }, svg);
+      if (bi === 0 || true) svgEl("text", { x: m.l - 8, y: ys(t) + 4, "text-anchor": "end", "font-size": 11, fill: "#8a8984" }, svg).textContent = t + "%";
+    }
+    sizes.forEach((s, k) => {
+      if (k % 2 === 0 || k === sizes.length - 1) svgEl("text", { x: xs(s), y: m.t + ph + 18, "text-anchor": "middle", "font-size": 11, fill: "#8a8984" }, svg).textContent = s;
+    });
+    svgEl("text", { x: m.l + pw / 2, y: H - 4, "text-anchor": "middle", "font-size": 12, fill: "#52514e" }, svg).textContent = "lado do labirinto (células)";
+
+    const ends = [];
+    for (const s of SOLVER_KEYS) {
+      const pts = B.scenarios[scenario][b][s].visited.map(([mean, ci], k) => [sizes[k], mean * 100, ci * 100]);
+      const band = pts.map(p => `${xs(p[0])},${ys(Math.min(100, p[1] + p[2]))}`).concat(pts.slice().reverse().map(p => `${xs(p[0])},${ys(Math.max(0, p[1] - p[2]))}`)).join(" ");
+      svgEl("polygon", { points: band, fill: SOLVER_HEX[s], opacity: .14 }, svg);
+      svgEl("polyline", { points: pts.map(p => `${xs(p[0])},${ys(p[1])}`).join(" "), fill: "none", stroke: SOLVER_HEX[s], "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+      for (const p of pts) svgEl("circle", { cx: xs(p[0]), cy: ys(p[1]), r: 4, fill: SOLVER_HEX[s], stroke: "#fcfcfb", "stroke-width": 2 }, svg);
+      ends.push({ s, y: ys(pts[pts.length - 1][1]) });
+    }
+    // Rotulos diretos no fim das linhas, afastados para nao colidir
+    ends.sort((a, b) => a.y - b.y);
+    for (let k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 14) ends[k].y = ends[k - 1].y + 14;
+    for (const e of ends) svgEl("text", { x: m.l + pw + 8, y: e.y + 4, "font-size": 12, "font-weight": 600, fill: "#52514e" }, svg).textContent = SOLVER_LABEL[e.s];
+
+    // Camada de hover: uma coluna por tamanho
+    const cross = svgEl("line", { y1: m.t, y2: m.t + ph, stroke: "#8a8984", "stroke-width": 1, opacity: 0 }, svg);
+    const step = pw / (sizes.length - 1);
+    sizes.forEach((sz, k) => {
+      const hit = svgEl("rect", { x: xs(sz) - step / 2, y: m.t, width: step, height: ph, fill: "transparent" }, svg);
+      hit.addEventListener("mouseenter", () => {
+        cross.setAttribute("x1", xs(sz)); cross.setAttribute("x2", xs(sz)); cross.setAttribute("opacity", 1);
+        const rows = SOLVER_KEYS.map(s => [s, B.scenarios[scenario][b][s].visited[k]]).sort((a, c) => a[1][0] - c[1][0]);
+        tip.innerHTML = `<b>${b} · ${sz}×${sz}</b><br>` + rows.map(([s, [mean, ci]]) => `<i style="background:${SOLVER_HEX[s]}"></i>${SOLVER_LABEL[s]}: ${pct(mean)} ±${(ci * 100).toFixed(1)}`).join("<br>");
+        const left = svg.getBoundingClientRect().left - el.getBoundingClientRect().left;
+        tip.style.left = (left / stageScale + xs(sz) + 12) + "px"; tip.style.top = "40px"; tip.style.opacity = 1;
+      });
+      hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); tip.style.opacity = 0; });
+    });
+  });
+}
+
+function barChart(el, title, rows, fmt) {
+  const W = 540, rowH = 64, m = { l: 170, r: 70, t: 40 }, H = m.t + rows.length * rowH;
+  const max = Math.max(...rows.map(r => r[1]));
+  const svg = svgEl("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, el);
+  svgEl("text", { x: 0, y: 18, "font-size": 16, "font-weight": 600, fill: "#0b0b0b" }, svg).textContent = title;
+  rows.forEach(([label, v], k) => {
+    const y = m.t + k * rowH + 14, bw = (W - m.l - m.r) * v / max, bh = 30;
+    svgEl("text", { x: m.l - 12, y: y + bh / 2 + 5, "text-anchor": "end", "font-size": 14, fill: "#52514e" }, svg).textContent = label;
+    svgEl("path", { d: `M${m.l},${y} h${Math.max(0, bw - 4)} a4,4 0 0 1 4,4 v${bh - 8} a4,4 0 0 1 -4,4 h${-Math.max(0, bw - 4)} z`, fill: "#2a78d6" }, svg);
+    svgEl("text", { x: m.l + bw + 8, y: y + bh / 2 + 5, "font-size": 15, "font-weight": 600, fill: "#0b0b0b" }, svg).textContent = fmt(v);
+  });
+}
+
+function winsTable(el, scenario) {
+  let html = `<table class="data"><tr><th>Builder</th>${SOLVER_KEYS.map(s => `<th>${SOLVER_LABEL[s]}</th>`).join("")}</tr>`;
+  for (const b of B.builders) {
+    const w = SOLVER_KEYS.map(s => B.scenarios[scenario][b][s].wins), top = Math.max(...w);
+    html += `<tr><td>${b}</td>${w.map(v => `<td class="${Math.abs(v - top) < 1e-9 ? "best" : ""}">${(v * 100).toFixed(0)}%</td>`).join("")}</tr>`;
+  }
+  el.innerHTML = html + "</table>";
+}
+
+function costTable(el) {
+  let html = `<table class="data"><tr><th>Builder</th>${SOLVER_KEYS.map(s => `<th>${SOLVER_LABEL[s]}</th>`).join("")}</tr>`;
+  for (const b of B.builders) {
+    html += `<tr><td>${b}</td>${SOLVER_KEYS.map(s => `<td>${B.scenarios.corners[b][s].us_per_cell.toFixed(2)}</td>`).join("")}</tr>`;
+  }
+  el.innerHTML = html + "</table>";
+}
+
+function setupResults() {
+  if (!B) {
+    document.querySelectorAll(".chart").forEach(e => e.innerHTML = '<p class="small muted">Sem dados: gere slides/results.js com o benchmark (veja o README).</p>');
+    return;
+  }
+  const c = B.config, mazes = c.sizes.length * B.builders.length * c.seeds;
+  document.getElementById("method-cards").innerHTML = `
+    <div class="card"><div class="big-num">${mazes}</div><p>labirintos: ${c.seeds} por builder em cada um dos ${c.sizes.length} tamanhos (${c.sizes[0]}×${c.sizes[0]} a ${c.sizes[c.sizes.length - 1]}×${c.sizes[c.sizes.length - 1]})</p></div>
+    <div class="card"><div class="big-num">2</div><p>cenários: entrada e saída nos cantos opostos, e ${c.pairs} pares sorteados por labirinto</p></div>
+    <div class="card"><div class="big-num">${c.repeats}×</div><p>repetições de cada solve para medir tempo (usa a mediana)</p></div>`;
+  document.querySelectorAll(".chart-legend").forEach(l => l.innerHTML = SOLVER_KEYS.map(s => `<span><i style="background:${SOLVER_HEX[s]}"></i>${SOLVER_LABEL[s]}</span>`).join("") + '<span class="muted">faixa = IC 95% · passe o mouse para ver os valores</span>');
+
+  const last = c.sizes.length - 1, side = c.sizes[last];
+  barChart(document.getElementById("chart-path"), `Caminho entre os cantos (${side}×${side})`, B.builders.map(b => [b, B.mazes[b].path[last][0]]), v => pct(v) + " das células");
+  barChart(document.getElementById("chart-deadends"), "Becos sem saída", B.builders.map(b => [b, B.mazes[b].dead_ends[0]]), v => pct(v));
+  smallMultiples(document.getElementById("chart-corners"), "corners");
+  smallMultiples(document.getElementById("chart-random"), "random");
+  winsTable(document.getElementById("wins-corners"), "corners");
+  winsTable(document.getElementById("wins-random"), "random");
+  costTable(document.getElementById("cost-table"));
+  if (window.NOTES) {
+    document.getElementById("corners-note").innerHTML = NOTES.corners;
+    document.getElementById("random-note").innerHTML = NOTES.random;
+    document.getElementById("conclusions").innerHTML = NOTES.conclusions.map(t => `<li>${t}</li>`).join("");
+  }
+}
+
+// ============================================================
+// Navegacao
+// ============================================================
+const slides = [...document.querySelectorAll(".slide")];
+let cur = 0, sub = 0;
+function fit() {
+  stageScale = Math.min(innerWidth / 1280, innerHeight / 720);
+  document.getElementById("stage").style.transform = `translate(-50%, -50%) scale(${stageScale})`;
+}
+function show(i, s = 0) {
+  players.forEach(p => { if (p.slide === slides[cur]) p.pause(); });
+  cur = Math.max(0, Math.min(slides.length - 1, i)); sub = s;
+  slides.forEach((el, k) => el.classList.toggle("active", k === cur));
+  document.getElementById("counter").textContent = `${cur + 1} / ${slides.length}`;
+  document.getElementById("progress").style.width = `${100 * (cur + 1) / slides.length}%`;
+  if (slides[cur].id === "model-slide") drawModel(sub);
+  players.forEach(p => { if (p.slide === slides[cur] && p.o.autoplay) p.play(); });
+  history.replaceState(null, "", "#" + (cur + 1));
+}
+function next() {
+  const n = +slides[cur].dataset.steps || 1;
+  if (sub < n - 1) { sub++; if (slides[cur].id === "model-slide") drawModel(sub); }
+  else show(cur + 1);
+}
+function prev() {
+  if (sub > 0) { sub--; if (slides[cur].id === "model-slide") drawModel(sub); }
+  else { const p = cur - 1; show(p, p >= 0 ? (+slides[Math.max(0, p)].dataset.steps || 1) - 1 : 0); }
+}
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+  if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); next(); }
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); prev(); }
+  else if (e.key === "p" || e.key === "P") players.filter(p => p.slide === slides[cur]).forEach(p => p.toggle());
+  else if (e.key === "r" || e.key === "R") players.filter(p => p.slide === slides[cur]).forEach(p => p.restart());
+  else if (e.key === "f" || e.key === "F") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  else if (e.key === "Home") show(0);
+  else if (e.key === "End") show(slides.length - 1);
+});
+document.getElementById("next").onclick = next;
+document.getElementById("prev").onclick = prev;
+
+// ============================================================
+// Inicio
+// ============================================================
+fit();
+document.querySelectorAll("[data-anim]").forEach(el => {
+  const o = JSON.parse(el.dataset.anim), a = new Anim(el, o);
+  let ctrl = null;
+  if (!o.bare) { ctrl = document.createElement("div"); ctrl.className = "controls"; el.appendChild(ctrl); }
+  new Player([a], ctrl, o);
+});
+setupRace();
+drawTextures();
+document.getElementById("texture-new").onclick = () => { textureSeed += 1; drawTextures(); };
+setupResults();
+addEventListener("resize", () => { fit(); players.forEach(p => p.anims.forEach(a => { a.ctx = sizeCanvas(a.canvas, a.o.size); a.draw(); })); drawTextures(); });
+const start = parseInt(location.hash.slice(1), 10);
+show(Number.isFinite(start) ? start - 1 : 0);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

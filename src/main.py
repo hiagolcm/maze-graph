@@ -39,6 +39,11 @@ def parse_args():
         help="semente aleatoria para reproduzir o mesmo labirinto (default: 0)",
     )
     parser.add_argument(
+        "--random-end",
+        action="store_true",
+        help="sorteia a celula de saida em vez de usar o canto inferior direito",
+    )
+    parser.add_argument(
         "--width",
         type=int,
         default=MAZE_WIDTH,
@@ -62,11 +67,11 @@ def main():
 
     # Maze build
     maze = Maze(args.width, args.height, builder=builder, solver=solver)
-    maze.open_entrance_and_exit()
+    maze.open_entrance_and_exit(exit_open=not args.random_end)
 
     # Maze solve
     path = []
-    maze.solve(lambda node: path.append(node))
+    maze.solve(lambda node: path.append(node), random_end=args.random_end)
 
     # Screen setup
     pygame.init()
@@ -77,6 +82,10 @@ def main():
 
     # Maze related printing
     maze.apply_for_each_node(lambda node: draw_square(node, screen))
+
+    # Com saida sorteada, marca onde ela esta antes de comecar a busca
+    if args.random_end:
+        draw_square_filled(maze.end, screen, color="green")
 
     while running:
         for event in pygame.event.get():

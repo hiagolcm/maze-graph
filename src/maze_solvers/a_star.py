@@ -1,4 +1,6 @@
+import heapq
 import random
+from itertools import count
 
 from maze import Node
 
@@ -53,5 +55,33 @@ from maze import Node
 # - A heuristica de Manhattan nunca superestima, entao o caminho achado e otimo.
 
 
+def heuristic(node: Node, end: Node):
+    return abs(node.x - end.x) + abs(node.y - end.y)
+
+
 def solve(start: Node, end: Node, draw_node):
-    raise NotImplementedError("Implemente o A* aqui")
+    # O contador desempata nos com o mesmo f, ja que Node nao e comparavel
+    tie = count()
+    g = {start: 0}
+    heap = [(heuristic(start, end), next(tie), start)]
+
+    while heap:
+        _, _, current = heapq.heappop(heap)
+
+        # No A* o no so e fechado ao sair da fila: antes disso, um caminho
+        # mais curto ainda pode baixar o g dele. Entradas antigas sao puladas.
+        if current.visited:
+            continue
+        current.visited = True
+        draw_node(current)
+
+        if current == end:
+            return True
+
+        for n in current.get_reachable_neighbors():
+            new_g = g[current] + 1
+            if not n.visited and new_g < g.get(n, float("inf")):
+                g[n] = new_g
+                heapq.heappush(heap, (new_g + heuristic(n, end), next(tie), n))
+
+    return False

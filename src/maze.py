@@ -67,6 +67,7 @@ class Maze:
         first = None
         last = None
         previous_line = None
+        self.nodes = []
 
         for i in range(h):
             ith_line = []
@@ -87,37 +88,28 @@ class Maze:
                     up_node.down_node = Neighbor(new_node, False)
                 ith_line.append(new_node)
 
+            self.nodes.extend(ith_line)
             previous_line = ith_line
 
         self.first = first
         self.last = last
+        self.end = last
         self.solver = solver
 
         builder(first)
         self.clear_visited()
 
     def clear_visited(self):
-        # Percorre a grade pelos .node estruturais (nao pelo is_path_free,
-        # que pode nao conectar tudo ainda) e zera visited em cada celula.
-        # Usa um set auxiliar para controlar quem ja foi percorrido, porque
-        # e justamente node.visited que esta sendo zerado aqui.
-        stack = [self.first]
-        seen = set()
-
-        while stack:
-            node = stack.pop()
-            if node in seen:
-                continue
-            seen.add(node)
+        # Zera visited em todas as celulas. self.nodes guarda a grade inteira,
+        # entao nao precisa percorrer os vizinhos (o que fica caro em labirintos grandes).
+        for node in self.nodes:
             node.visited = False
 
-            for link in (node.left_node, node.right_node, node.up_node, node.down_node):
-                if link.node is not None and link.node not in seen:
-                    stack.append(link.node)
-
-    def open_entrance_and_exit(self):
+    def open_entrance_and_exit(self, exit_open=True):
         self.first.up_node.is_path_free = True
-        self.last.down_node.is_path_free = True
+
+        if exit_open:
+            self.last.down_node.is_path_free = True
 
     def apply_for_each_node(self, visit):
         self.clear_visited()
@@ -142,6 +134,21 @@ class Maze:
                     neighbor.visited = True
                     stack.append(neighbor)
 
-    def solve(self, draw_node):
+    def pick_end(self, random_end=False, rng=random):
+        # Escolhe a celula de saida. Por padrao e a do canto inferior direito.
+        # Com random_end=True, sorteia qualquer celula, menos a entrada.
+        # rng permite passar um random.Random proprio para sortear sem mexer
+        # na semente global (o benchmark usa isso).
+        if not random_end:
+            return self.last
+
+        # nodes[0] e a entrada; sortear entre os demais sem montar uma lista nova
+        # (rng.choice sobre a lista sem a entrada consome o mesmo numero aleatorio)
+        return self.nodes[1 + rng.randrange(len(self.nodes) - 1)]
+
+    def solve(self, draw_node, random_end=False, rng=random):
+        # A entrada e sempre o canto superior esquerdo. A saida (self.end) e o
+        # canto inferior direito, ou uma celula sorteada se random_end=True.
         self.clear_visited()
-        return self.solver(self.first, self.last, draw_node)
+        self.end = self.pick_end(random_end, rng)
+        return self.solver(self.first, self.end, draw_node)

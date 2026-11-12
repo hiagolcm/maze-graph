@@ -59,5 +59,27 @@ from maze import Node
 #     - Caso contrario, descarta a parede.
 
 
+def add_frontier(node: Node, frontier):
+    for link in node.get_links():
+        if link.node is not None and not link.node.visited:
+            frontier.append((node, link))
+
+
 def build(start: Node):
-    raise NotImplementedError("Implemente o Prim aleatorizado aqui")
+    start.visited = True
+    frontier = []
+    add_frontier(start, frontier)
+
+    while frontier:
+        # Troca o escolhido com o ultimo para remover em O(1)
+        i = random.randrange(len(frontier))
+        frontier[i], frontier[-1] = frontier[-1], frontier[i]
+        node, link = frontier.pop()
+
+        neighbor = link.node
+        if neighbor.visited:
+            continue
+
+        node.open_passage(link)
+        neighbor.visited = True
+        add_frontier(neighbor, frontier)

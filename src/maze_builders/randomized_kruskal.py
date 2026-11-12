@@ -59,5 +59,42 @@ from maze import Node
 #   vizinhos (is_path_free ainda esta todo False aqui).
 
 
+def find(parent, node: Node):
+    while parent[node] is not node:
+        parent[node] = parent[parent[node]]
+        node = parent[node]
+    return node
+
+
 def build(start: Node):
-    raise NotImplementedError("Implemente o Kruskal aleatorizado aqui")
+    # Lista todas as paredes. So right e down, para nao repetir cada parede.
+    walls = []
+    start.visited = True
+    stack = [start]
+
+    while stack:
+        node = stack.pop()
+
+        for link in (node.right_node, node.down_node):
+            if link.node is not None:
+                walls.append((node, link))
+
+        for link in (node.left_node, node.up_node, node.right_node, node.down_node):
+            if link.node is not None and not link.node.visited:
+                link.node.visited = True
+                stack.append(link.node)
+
+    random.shuffle(walls)
+
+    parent = {}
+    for node, link in walls:
+        parent.setdefault(node, node)
+        parent.setdefault(link.node, link.node)
+
+    for node, link in walls:
+        a = find(parent, node)
+        b = find(parent, link.node)
+
+        if a is not b:
+            node.open_passage(link)
+            parent[a] = b
