@@ -58,43 +58,63 @@ from maze import Node
 # - Dica: para listar todas as paredes, percorra a grade seguindo os .node dos
 #   vizinhos (is_path_free ainda esta todo False aqui).
 
-
-def find(parent, node: Node):
-    while parent[node] is not node:
-        parent[node] = parent[parent[node]]
-        node = parent[node]
-    return node
-
-
 def build(start: Node):
-    # Lista todas as paredes. So right e down, para nao repetir cada parede.
-    walls = []
-    start.visited = True
+    # Encontra todos os nós do labirinto
+    nodes = []
     stack = [start]
+    visited = set()
 
     while stack:
-        node = stack.pop()
+        current = stack.pop()
 
-        for link in (node.right_node, node.down_node):
-            if link.node is not None:
-                walls.append((node, link))
+        if current in visited:
+            continue
 
-        for link in (node.left_node, node.up_node, node.right_node, node.down_node):
-            if link.node is not None and not link.node.visited:
-                link.node.visited = True
+        visited.add(current)
+        nodes.append(current)
+
+        for link in current.get_links():
+            if link.node is not None and link.node not in visited:
                 stack.append(link.node)
 
+    # Cada nó começa em seu próprio conjunto
+    parent = {node: node for node in nodes}
+
+    def find(node):
+        if parent[node] != node:
+            parent[node] = find(parent[node])
+        return parent[node]
+
+    def union(node_a, node_b):
+        root_a = find(node_a)
+        root_b = find(node_b)
+
+        if root_a == root_b:
+            return False
+
+        parent[root_b] = root_a
+        return True
+
+    # Cria a lista de paredes entre os nós
+    walls = []
+
+    for node in nodes:
+        for link in node.get_links():
+            neighbor = link.node
+
+            if neighbor is not None:
+                walls.append((node, link, neighbor))
+
+    # Embaralha as paredes aleatoriamente
     random.shuffle(walls)
 
-    parent = {}
-    for node, link in walls:
-        parent.setdefault(node, node)
-        parent.setdefault(link.node, link.node)
-
-    for node, link in walls:
-        a = find(parent, node)
-        b = find(parent, link.node)
-
-        if a is not b:
+    # Analisa cada parede
+    for node, link, neighbor in walls:
+        # Abre a passagem somente se não criar um ciclo
+        if union(node, neighbor):
             node.open_passage(link)
-            parent[a] = b
+
+    # Marca todos os nós como visitados
+    for node in nodes:
+        node.visited = True
+

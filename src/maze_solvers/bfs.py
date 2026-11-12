@@ -53,18 +53,25 @@ from maze import Node
 
 def solve(start: Node, end: Node, draw_node):
     start.visited = True
+
     queue = deque([start])
 
-    while queue:
+    while len(queue) > 0:
         current = queue.popleft()
-        draw_node(current)
+        current.state = "EXPANDED"
+        draw_node(current, "EXPANDED")
 
         if current == end:
             return True
 
-        for n in current.get_reachable_neighbors():
+        neighbors = current.get_reachable_neighbors()
+
+        for n in neighbors:
             if not n.visited:
                 n.visited = True
+                n.visited = True
+                n.state = "DISCOVERED"
+                draw_node(n, "DISCOVERED")
                 queue.append(n)
 
     return False

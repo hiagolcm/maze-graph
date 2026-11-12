@@ -10,8 +10,9 @@ def solve(start: Node, end: Node, draw_node):
 
     while len(stack) > 0:
         current = stack.pop()
+        current.state = "EXPANDED"
         current.visited = True
-        draw_node(current)
+        draw_node(current, "EXPANDED")
 
         if current == end:
             return True
@@ -20,6 +21,8 @@ def solve(start: Node, end: Node, draw_node):
 
         for n in neighbors:
             if n is not None and not n.visited:
+                n.state = "DISCOVERED"
                 stack.append(n)
+                draw_node(n, "DISCOVERED")
 
     return False

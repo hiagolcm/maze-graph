@@ -59,27 +59,45 @@ from maze import Node
 #     - Caso contrario, descarta a parede.
 
 
-def add_frontier(node: Node, frontier):
-    for link in node.get_links():
-        if link.node is not None and not link.node.visited:
-            frontier.append((node, link))
-
 
 def build(start: Node):
+    # Marca o nó inicial como visitado
     start.visited = True
+
+    # Lista de paredes entre nós visitados e não visitados
     frontier = []
-    add_frontier(start, frontier)
 
+    # Adiciona os vizinhos do nó inicial à fronteira
+    for link in start.get_links():
+        if link.node is not None and not link.node.visited:
+            frontier.append((start, link))
+
+    # Continua enquanto existirem paredes na fronteira
     while frontier:
-        # Troca o escolhido com o ultimo para remover em O(1)
-        i = random.randrange(len(frontier))
-        frontier[i], frontier[-1] = frontier[-1], frontier[i]
-        node, link = frontier.pop()
 
+        # Escolhe uma parede aleatória
+        index = random.randrange(len(frontier))
+        current_node, link = frontier.pop(index)
+
+        # Obtém o nó vizinho
         neighbor = link.node
-        if neighbor.visited:
-            continue
 
-        node.open_passage(link)
-        neighbor.visited = True
-        add_frontier(neighbor, frontier)
+        # Verifica se o vizinho ainda não foi visitado
+        if neighbor is not None and not neighbor.visited:
+
+            # Abre a passagem entre os dois nós
+            current_node.open_passage(link)
+
+            # Marca o vizinho como visitado
+            neighbor.visited = True
+
+            # Adiciona os vizinhos ainda não visitados à fronteira
+            for next_link in neighbor.get_links():
+
+                next_neighbor = next_link.node
+
+                if (
+                    next_neighbor is not None
+                    and not next_neighbor.visited
+                ):
+                    frontier.append((neighbor, next_link))

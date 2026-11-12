@@ -17,7 +17,13 @@ def build(start: Node):
     while stack:
         node = stack[-1]
 
-        if node.is_dead_end():
+        is_dead_end = True
+
+        for link in (node.left_node, node.up_node, node.right_node, node.down_node):
+            if link.node is not None and not link.node.visited:
+                is_dead_end = False
+
+        if is_dead_end:
             stack.pop()
             continue
 

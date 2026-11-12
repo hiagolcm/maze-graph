@@ -153,8 +153,13 @@ def measure(maze, solve, start, end, seed, repeats):
         random.seed(seed)
         drawn = []
 
+        def draw_node(node, status):
+            # Conta so as celulas expandidas; as "descobertas" ainda nao foram visitadas
+            if status == "EXPANDED":
+                drawn.append(node)
+
         begin = time.perf_counter()
-        found = solve(start, end, drawn.append)
+        found = solve(start, end, draw_node)
         times.append(time.perf_counter() - begin)
 
         assert found, "o solver nao achou a saida"

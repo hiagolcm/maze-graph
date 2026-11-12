@@ -1,5 +1,5 @@
 import random
-
+import time
 
 class Neighbor:
     def __init__(self, node, is_path_free):
@@ -16,6 +16,7 @@ class Node:
         self.down_node = Neighbor(down_node, False)
         self.x = x
         self.y = y
+        self.state: "DISCOVERED" | "EXPANDED" | None = None
 
     def is_dead_end(self):
         for link in (self.left_node, self.up_node, self.right_node, self.down_node):
@@ -96,14 +97,22 @@ class Maze:
         self.end = last
         self.solver = solver
 
+        # solve
+        start_build_time = time.perf_counter()
         builder(first)
+        end_build_time = time.perf_counter()
+        self.build_time = (end_build_time - start_build_time) * 1000
+
+        # Calcula a diferença
         self.clear_visited()
 
-    def clear_visited(self):
+    def clear_visited(self, clear_state: bool = False):
         # Zera visited em todas as celulas. self.nodes guarda a grade inteira,
         # entao nao precisa percorrer os vizinhos (o que fica caro em labirintos grandes).
         for node in self.nodes:
             node.visited = False
+            if clear_state:
+                node.state = None
 
     def open_entrance_and_exit(self, exit_open=True):
         self.first.up_node.is_path_free = True
@@ -149,6 +158,10 @@ class Maze:
     def solve(self, draw_node, random_end=False, rng=random):
         # A entrada e sempre o canto superior esquerdo. A saida (self.end) e o
         # canto inferior direito, ou uma celula sorteada se random_end=True.
-        self.clear_visited()
+        self.clear_visited(clear_state=True)
         self.end = self.pick_end(random_end, rng)
-        return self.solver(self.first, self.end, draw_node)
+
+        start_solve_time = time.perf_counter()
+        found = self.solver(self.first, self.end, draw_node)
+        self.solve_time = (time.perf_counter() - start_solve_time) * 1000
+        return found

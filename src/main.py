@@ -10,6 +10,7 @@ import maze_solvers
 from constants import MAZE_HEIGHT, MAZE_WIDTH, MULTIPLIER
 from draw_utils import draw_square, draw_square_filled
 from maze import Maze
+from maze_data import MazeData
 
 
 def available(package):
@@ -71,11 +72,21 @@ def main():
 
     # Maze solve
     path = []
-    maze.solve(lambda node: path.append(node), random_end=args.random_end)
+    maze.solve(
+        lambda node, status: path.append((node, status)),
+        random_end=args.random_end,
+    )
+
+    # Benchmark
+    maze_data = MazeData()
+    maze_data.collect_from(maze)
+    maze_data.print_data()
 
     # Screen setup
     pygame.init()
-    screen = pygame.display.set_mode((args.width * MULTIPLIER, args.height * MULTIPLIER))
+    screen = pygame.display.set_mode(
+        (args.width * MULTIPLIER, args.height * MULTIPLIER)
+    )
     clock = pygame.time.Clock()
     running = True
     screen.fill("white")
@@ -93,12 +104,19 @@ def main():
                 running = False
 
         if len(path) > 0:
-            current_node = path.pop(0)
-            draw_square_filled(current_node, screen)
+            current_print = path.pop(0)
+            current_node = current_print[0]
+            current_state = current_print[1]
+            draw_square_filled(
+                current_node,
+                screen,
+                0,
+                "blue" if current_state == "DISCOVERED" else "red",
+            )
 
         pygame.display.flip()
 
-        clock.tick(200)
+        clock.tick(100)
 
     pygame.quit()
 
