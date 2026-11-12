@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from benchmark import MazeData  # noqa: E402
+from maze_data import MazeData  # noqa: E402
 from maze import Maze  # noqa: E402
 
 BUILDERS = ("dead_end_dfs", "randomized_kruskal", "randomized_prim")
